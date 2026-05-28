@@ -49,7 +49,7 @@ int ledEnvoi = 19;   // LED pour indiquer l'envoi du message
 typedef struct struct_message
 {
   int id;
-  char sens[4];
+  int sens;
 } struct_message;
 
 // Adresse MAC du récepteur (à remplacer par l'adresse réelle de l'ESP32 récepteur)
@@ -300,7 +300,7 @@ void logiquePassage()
       // Envoyer le message via ESP-NOW
       struct_message myData;
       myData.id = ID;
-      strcpy(myData.sens, "out");
+      myData.sens = 0;
       esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
       digitalWrite(ledEnvoi, HIGH);
       delay(10);
@@ -343,7 +343,7 @@ void logiquePassage()
       // Envoyer le message via ESP-NOW
       struct_message myData;
       myData.id = ID;
-      strcpy(myData.sens, "in");
+      myData.sens = 1;
       esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
       digitalWrite(ledEnvoi, HIGH);
       delay(10);
