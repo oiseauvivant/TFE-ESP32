@@ -6,7 +6,7 @@
 typedef struct struct_message
 {
     int id;
-    char sens[4];
+    int sens;
 } struct_message;
 
 // Adresse MAC du récepteur
@@ -59,15 +59,8 @@ void loop()
     int sens = random(2); // 0 ou 1
     // Exemple d’envoi simple
     struct_message msg;
-    msg.id = id; // valeur test
-    if (sens == 0)
-    {
-        strcpy(msg.sens, "in");
-    }
-    else if (sens == 1)
-    {
-        strcpy(msg.sens, "out");
-    }
+    msg.id = id;     // valeur test
+    msg.sens = sens; // valeur test
     esp_now_send(broadcastAddress, (uint8_t *)&msg, sizeof(msg));
 
     delay(1000); // envoi toutes les secondes

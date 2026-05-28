@@ -20,13 +20,13 @@ Demux demuxin(21, 19, 32, 33, 25);  // Pins pour le démultiplexeur d'entrée
 typedef struct struct_message
 {
     int id = 0;
-    char sens[4] = "out";
+    int sens = 0;
 } struct_message;
 
 struct_message incoming;
 
 int recupid = -1;
-char recupsens[4] = "-1";
+int recupsens = -1;
 
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
 {
@@ -34,7 +34,7 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
     snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
              mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 
-    // memcpy(&incoming, data, sizeof(incoming));
+    memcpy(&incoming, data, sizeof(incoming));
 
     Serial.print("Reçu de ");
     Serial.print(macStr);
@@ -76,26 +76,11 @@ void setup()
 
 void loop()
 {
-    incoming.id++;
-    if (incoming.id > 9)
-    {
-        incoming.id = 0;
-    }
-
-    if (strcmp(incoming.sens, "in") == 0 && incoming.id == 9)
-    {
-        strcpy(incoming.sens, "out");
-    }
-    else if (strcmp(incoming.sens, "out") == 0 && incoming.id == 9)
-    {
-        strcpy(incoming.sens, "in");
-    }
-
-    if (strcmp(incoming.sens, "in") == 0)
+    if (incoming.sens == 1)
     {
         demuxin.select(incoming.id);
     }
-    else if (strcmp(incoming.sens, "out") == 0)
+    else if (incoming.sens == 0)
     {
         demuxout.select(incoming.id);
     }
@@ -109,9 +94,9 @@ void loop()
         tft.print("ID: " + String(incoming.id));
     }
 
-    if (strcmp(recupsens, incoming.sens) != 0)
+    if (recupsens != incoming.sens)
     {
-        strcpy(recupsens, incoming.sens);
+        recupsens = incoming.sens;
         tft.fillRect(82, 10, 18, 8, ST77XX_BLACK);
         tft.setCursor(40, 10);
         tft.print(" Sens: " + String(incoming.sens));
