@@ -63,5 +63,5 @@ void loop()
     msg.sens = sens; // valeur test
     esp_now_send(broadcastAddress, (uint8_t *)&msg, sizeof(msg));
 
-    delay(1000); // envoi toutes les secondes
+    delay(3000); // envoi toutes les secondes
 }

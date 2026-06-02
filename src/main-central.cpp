@@ -28,6 +28,10 @@ struct_message incoming;
 int recupid = -1;
 int recupsens = -1;
 
+int PCconnexion = 0;
+
+String dataAutoconnexion;
+
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
 {
     char macStr[18];
@@ -36,12 +40,12 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
 
     memcpy(&incoming, data, sizeof(incoming));
 
-    Serial.print("Reçu de ");
+    /*Serial.print("Reçu de ");
     Serial.print(macStr);
     Serial.print("  id=");
     Serial.println(incoming.id);
     Serial.print("  Sens=");
-    Serial.println(incoming.sens);
+    Serial.println(incoming.sens);*/
 
     pinMode(34, INPUT);
     pinMode(35, INPUT);
@@ -64,7 +68,7 @@ void setup()
 
     esp_now_register_recv_cb(OnDataRecv);
 
-    Serial.println("Récepteur ESP-NOW prêt");
+    // Serial.println("Récepteur ESP-NOW prêt");
 
     tft.initR(INITR_BLACKTAB);
     tft.fillScreen(ST77XX_BLACK);
@@ -76,6 +80,15 @@ void setup()
 
 void loop()
 {
+
+    if (Serial.available() > 0)
+    {
+        if (Serial.readStringUntil('\n') == "PING")
+        {
+            Serial.println("PONG");
+        }
+    }
+
     if (incoming.sens == 1)
     {
         demuxin.select(incoming.id);
@@ -85,6 +98,8 @@ void loop()
         demuxout.select(incoming.id);
     }
 
+    bool change = false;
+
     if (recupid != incoming.id)
     {
         recupid = incoming.id;
@@ -92,6 +107,7 @@ void loop()
         tft.fillRect(34, 10, 6, 8, ST77XX_BLACK);
         tft.setCursor(10, 10);
         tft.print("ID: " + String(incoming.id));
+        change = true;
     }
 
     if (recupsens != incoming.sens)
@@ -100,7 +116,13 @@ void loop()
         tft.fillRect(82, 10, 18, 8, ST77XX_BLACK);
         tft.setCursor(40, 10);
         tft.print(" Sens: " + String(incoming.sens));
+        change = true;
     }
 
-    delay(500);
+    if (change)
+    {
+        char trame[30];
+        sprintf(trame, "id=%d;sens=%d", incoming.id, incoming.sens);
+        Serial.println(trame);
+    }
 }
