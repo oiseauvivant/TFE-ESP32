@@ -4,7 +4,6 @@
 #include <TFE_Bibliotheque.h>
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_ST7735.h> // Hardware-specific library for ST7735
-#include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
 #include <SPI.h>
 
 #define TFT_CS 2
@@ -30,8 +29,6 @@ int recupsens = -1;
 
 int PCconnexion = 0;
 
-String dataAutoconnexion;
-
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
 {
     char macStr[18];
@@ -46,14 +43,14 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
     Serial.println(incoming.id);
     Serial.print("  Sens=");
     Serial.println(incoming.sens);*/
-
-    pinMode(34, INPUT);
-    pinMode(35, INPUT);
-    pinMode(5, INPUT);
 }
 
 void setup()
 {
+    pinMode(34, INPUT);
+    pinMode(35, INPUT);
+    pinMode(5, INPUT);
+
     Serial.begin(115200);
     delay(1000);
 
@@ -68,8 +65,6 @@ void setup()
 
     esp_now_register_recv_cb(OnDataRecv);
 
-    // Serial.println("Récepteur ESP-NOW prêt");
-
     tft.initR(INITR_BLACKTAB);
     tft.fillScreen(ST77XX_BLACK);
     tft.setCursor(10, 10);         // Position du texte
@@ -80,12 +75,19 @@ void setup()
 
 void loop()
 {
-
     if (Serial.available() > 0)
     {
-        if (Serial.readStringUntil('\n') == "PING")
+        String mspPC = Serial.readStringUntil('\n');
+        if (mspPC == "PING")
         {
+            PCconnexion = 1;
             Serial.println("PONG");
+        }
+        else if (mspPC == "DECONNEXION")
+        {
+            PCconnexion = 0;
+            tft.setCursor(10, 40);
+            tft.print("PC déconnecté");
         }
     }
 
