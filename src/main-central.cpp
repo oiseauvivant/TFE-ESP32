@@ -10,10 +10,14 @@
 #define TFT_RST 15
 #define TFT_DC 4
 
+#define btnMode 5
+#define btnAjout 34
+#define btnRetirer 35
+
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 Demux demuxout(26, 27, 14, 12, 13); // Pins pour le démultiplexeur de sortie
-Demux demuxin(21, 19, 32, 33, 25);  // Pins pour le démultiplexeur d'entrée
+Demux demuxin(21, 22, 32, 33, 25);  // Pins pour le démultiplexeur d'entrée
 
 // structure de données reçue
 typedef struct struct_message
@@ -28,6 +32,9 @@ int recupid = -1;
 int recupsens = -1;
 
 int PCconnexion = 0;
+
+bool mode = 0;
+bool btnModeEtatPrecedent = 0;
 
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
 {
@@ -47,9 +54,9 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
 
 void setup()
 {
-    pinMode(34, INPUT);
-    pinMode(35, INPUT);
-    pinMode(5, INPUT);
+    pinMode(btnAjout, INPUT);
+    pinMode(btnRetirer, INPUT);
+    pinMode(btnMode, INPUT);
 
     Serial.begin(115200);
     delay(1000);
@@ -127,4 +134,35 @@ void loop()
         sprintf(trame, "id=%d;sens=%d", incoming.id, incoming.sens);
         Serial.println(trame);
     }
+
+    static unsigned long tDebutAppui = 0;
+    static bool etatPrecedent = 0;
+    static bool appuiEnCours = 0;
+
+    bool etatActuel = digitalRead(btnMode);
+    unsigned long maintenant = millis();
+
+    // Début d'appui
+    if (etatActuel == 1 && etatPrecedent == 0)
+    {
+        tDebutAppui = maintenant; // on mémorise le moment où l'appui commence
+        appuiEnCours = 1;         // on indique qu'un appui est en cours
+    }
+
+    // Si le bouton est resté appuyé 1 seconde complète
+    if (etatActuel == 1 && (maintenant - tDebutAppui) >= 10 && appuiEnCours)
+    {
+
+        // On valide UNE SEULE FOIS l'appui long
+        mode = !mode;
+
+        if (mode)
+            tft.fillScreen(ST77XX_GREEN);
+        else
+            tft.fillScreen(ST77XX_RED);
+        appuiEnCours = 0; // on indique que l'appui a été traité
+    }
+
+    // Mise à jour de l'état précédent
+    etatPrecedent = etatActuel;
 }
