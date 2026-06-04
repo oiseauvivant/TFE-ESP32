@@ -187,12 +187,12 @@ void majAffichage()
         tft.print("Total entr");
         tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
         tft.print("es : ");
-        tft.fillRect(106, 60, 18, 8, ST77XX_BLACK); // Efface la partie du nombre total d'entrées
+        tft.fillRect(106, 60, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total d'entrées
         tft.println(totalEntree);
 
         tft.setCursor(10, 110);
         tft.print("Total sorties : ");
-        tft.fillRect(106, 110, 18, 8, ST77XX_BLACK); // Efface la partie du nombre total de sorties
+        tft.fillRect(106, 110, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total de sorties
         tft.println(totalSortie);
     }
     else if (mode == 2)
