@@ -19,37 +19,55 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 Demux demuxout(26, 27, 14, 12, 13); // Pins pour le démultiplexeur de sortie
 Demux demuxin(21, 22, 32, 33, 25);  // Pins pour le démultiplexeur d'entrée
 
-// structure de données reçue
+// structure de données reçue par ESP-NOW
 typedef struct struct_message
 {
     int id = 0;
     int sens = 0;
 } struct_message;
 
-struct_message incoming;
+struct_message dataRecu;
 
-int recupid = -1;
-int recupsens = -1;
+struct totalPortes
+{
+    int porte[10] = {0};
+};
 
-int PCconnexion = 0;
+totalPortes PortesEntree;
+totalPortes PortesSortie;
 
-bool mode = 0;
-bool btnModeEtatPrecedent = 0;
+// Variables globales
+bool PCconnexion = 0;
+int mode = 0;
+int personnePresente = 0;
+int totalEntree = 0;
+int totalSortie = 0;
+
+void changementMode();
+void majAffichage();
 
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
 {
     char macStr[18];
-    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-             mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 
-    memcpy(&incoming, data, sizeof(incoming));
+    memcpy(&dataRecu, data, sizeof(dataRecu));
 
-    /*Serial.print("Reçu de ");
-    Serial.print(macStr);
-    Serial.print("  id=");
-    Serial.println(incoming.id);
-    Serial.print("  Sens=");
-    Serial.println(incoming.sens);*/
+    if (dataRecu.sens == 1)
+    {
+        personnePresente++;
+        totalEntree++;
+        PortesEntree.porte[dataRecu.id]++;
+    }
+    else if (dataRecu.sens == 0)
+    {
+        if (personnePresente > 0) // On s'assure de ne pas avoir un nombre négatif de personnes présentes
+        {
+            personnePresente--;
+        }
+        totalSortie++;
+        PortesSortie.porte[dataRecu.id]++;
+    }
 }
 
 void setup()
@@ -72,6 +90,7 @@ void setup()
 
     esp_now_register_recv_cb(OnDataRecv);
 
+    tft.cp437(true);
     tft.initR(INITR_BLACKTAB);
     tft.fillScreen(ST77XX_BLACK);
     tft.setCursor(10, 10);         // Position du texte
@@ -98,71 +117,126 @@ void loop()
         }
     }
 
-    if (incoming.sens == 1)
-    {
-        demuxin.select(incoming.id);
-    }
-    else if (incoming.sens == 0)
-    {
-        demuxout.select(incoming.id);
-    }
+    changementMode();
+    majAffichage();
+}
 
-    bool change = false;
-
-    if (recupid != incoming.id)
-    {
-        recupid = incoming.id;
-
-        tft.fillRect(34, 10, 6, 8, ST77XX_BLACK);
-        tft.setCursor(10, 10);
-        tft.print("ID: " + String(incoming.id));
-        change = true;
-    }
-
-    if (recupsens != incoming.sens)
-    {
-        recupsens = incoming.sens;
-        tft.fillRect(82, 10, 18, 8, ST77XX_BLACK);
-        tft.setCursor(40, 10);
-        tft.print(" Sens: " + String(incoming.sens));
-        change = true;
-    }
-
-    if (change)
-    {
-        char trame[30];
-        sprintf(trame, "id=%d;sens=%d", incoming.id, incoming.sens);
-        Serial.println(trame);
-    }
-
+void changementMode()
+{
     static unsigned long tDebutAppui = 0;
     static bool etatPrecedent = 0;
     static bool appuiEnCours = 0;
 
     bool etatActuel = digitalRead(btnMode);
-    unsigned long maintenant = millis();
+    unsigned long tMaintenant = millis();
 
     // Début d'appui
     if (etatActuel == 1 && etatPrecedent == 0)
     {
-        tDebutAppui = maintenant; // on mémorise le moment où l'appui commence
-        appuiEnCours = 1;         // on indique qu'un appui est en cours
+        tDebutAppui = tMaintenant; // on mémorise le moment où l'appui commence
+        appuiEnCours = 1;          // on indique qu'un appui est en cours
     }
 
-    // Si le bouton est resté appuyé 1 seconde complète
-    if (etatActuel == 1 && (maintenant - tDebutAppui) >= 10 && appuiEnCours)
+    // Si le bouton est resté appuyé 10 millisecondes ou plus, on considère l'appui
+    if (etatActuel == 1 && (tMaintenant - tDebutAppui) >= 10 && appuiEnCours)
     {
 
-        // On valide UNE SEULE FOIS l'appui long
-        mode = !mode;
-
-        if (mode)
-            tft.fillScreen(ST77XX_GREEN);
+        if (mode >= 3)
+        {
+            mode = 0;
+        }
         else
-            tft.fillScreen(ST77XX_RED);
+        {
+            mode++;
+        }
+        tft.fillScreen(ST77XX_BLACK); // Efface l'écran à chaque changement de mode
+
         appuiEnCours = 0; // on indique que l'appui a été traité
     }
 
     // Mise à jour de l'état précédent
     etatPrecedent = etatActuel;
+}
+
+void majAffichage()
+{
+    if (mode == 0)
+    {
+        tft.setTextSize(2);
+        tft.setCursor(10, 10);
+        tft.println("Personnes");
+        tft.setCursor(10, 26);
+        tft.print("pr");
+        tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+        tft.print("sentes:");
+        tft.fillRect(130, 26, 22, 15, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
+        tft.println(personnePresente);
+    }
+    else if (mode == 1)
+    {
+        tft.setTextSize(1);
+
+        tft.setCursor(10, 10);
+        tft.print("Personnes pr");
+        tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+        tft.print("sentes : ");
+        tft.fillRect(142, 10, 12, 8, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
+        tft.println(personnePresente);
+
+        tft.setCursor(10, 60);
+        tft.print("Total entr");
+        tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+        tft.print("es : ");
+        tft.fillRect(106, 60, 18, 8, ST77XX_BLACK); // Efface la partie du nombre total d'entrées
+        tft.println(totalEntree);
+
+        tft.setCursor(10, 110);
+        tft.print("Total sorties : ");
+        tft.fillRect(106, 110, 18, 8, ST77XX_BLACK); // Efface la partie du nombre total de sorties
+        tft.println(totalSortie);
+    }
+    else if (mode == 2)
+    {
+        tft.setTextSize(1);
+        for (int i = 0; i < 10; i++)
+        {
+            tft.setCursor(10, 10 + i * 11);
+            tft.print("Entr");
+            tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+            tft.print("es ");
+            tft.print("porte ");
+            tft.print(i);
+            tft.print(" : ");
+            tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre d'entrées pour cette porte
+            tft.println(PortesEntree.porte[i]);
+        }
+    }
+    else if (mode == 3)
+    {
+        tft.setTextSize(1);
+        for (int i = 0; i < 10; i++)
+        {
+            tft.setCursor(10, 10 + i * 11);
+            tft.print("Sorties porte ");
+            tft.print(i);
+            tft.print(" : ");
+            tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre de sorties pour cette porte
+            tft.println(PortesSortie.porte[i]);
+        }
+    }
+}
+
+void ajoutPersonne()
+{
+    personnePresente++;
+    totalEntree++;
+}
+
+void retirerPersonne()
+{
+    if (personnePresente > 0) // On s'assure de ne pas avoir un nombre négatif de personnes présentes
+    {
+        personnePresente--;
+    }
+    totalSortie++;
 }
