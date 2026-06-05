@@ -35,15 +35,21 @@ struct totalPortes
 
 totalPortes PortesEntree;
 totalPortes PortesSortie;
+totalPortes ancienPortesEntree;
+totalPortes ancienPortesSortie;
 
 // Variables globales
 bool PCconnexion = 0;
+bool flagChangementMode = 0;
 int mode = 0;
 int personnePresente = 0;
 int totalEntree = 0;
 int totalSortie = 0;
+int ancienPersonnePresente = -1;
+int ancienTotalEntree = -1;
+int ancienTotalSortie = -1;
 
-void changementMode();
+bool appuiBouton(int pin);
 void majAffichage();
 
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
@@ -75,6 +81,12 @@ void setup()
     pinMode(btnAjout, INPUT);
     pinMode(btnRetirer, INPUT);
     pinMode(btnMode, INPUT);
+
+    for (int i = 0; i < 10; i++)
+    {
+        ancienPortesEntree.porte[i] = -1;
+        ancienPortesSortie.porte[i] = -1;
+    }
 
     Serial.begin(115200);
     delay(1000);
@@ -117,30 +129,8 @@ void loop()
         }
     }
 
-    changementMode();
-    majAffichage();
-}
-
-void changementMode()
-{
-    static unsigned long tDebutAppui = 0;
-    static bool etatPrecedent = 0;
-    static bool appuiEnCours = 0;
-
-    bool etatActuel = digitalRead(btnMode);
-    unsigned long tMaintenant = millis();
-
-    // Début d'appui
-    if (etatActuel == 1 && etatPrecedent == 0)
+    if (appuiBouton(btnMode))
     {
-        tDebutAppui = tMaintenant; // on mémorise le moment où l'appui commence
-        appuiEnCours = 1;          // on indique qu'un appui est en cours
-    }
-
-    // Si le bouton est resté appuyé 10 millisecondes ou plus, on considère l'appui
-    if (etatActuel == 1 && (tMaintenant - tDebutAppui) >= 10 && appuiEnCours)
-    {
-
         if (mode >= 3)
         {
             mode = 0;
@@ -149,80 +139,144 @@ void changementMode()
         {
             mode++;
         }
+        flagChangementMode = 1;       // on indique qu'il y a eu un changement de mode
         tft.fillScreen(ST77XX_BLACK); // Efface l'écran à chaque changement de mode
+    }
+    majAffichage();
+}
 
-        appuiEnCours = 0; // on indique que l'appui a été traité
+bool appuiBouton(int pin)
+{
+    static unsigned long tDebutAppui[35] = {0};
+    static bool etatPrecedent[35] = {0};
+    static bool appuiEnCours[35] = {0};
+
+    bool etatActuel = digitalRead(pin);
+    unsigned long tMaintenant = millis();
+
+    // Début d'appui
+    if (etatActuel == 1 && etatPrecedent[pin] == 0)
+    {
+        tDebutAppui[pin] = tMaintenant; // on mémorise le moment où l'appui commence
+        appuiEnCours[pin] = 1;          // on indique qu'un appui est en cours
     }
 
+    // Si le bouton est resté appuyé 10 millisecondes ou plus, on considère l'appui
+    if (etatActuel == 1 && (tMaintenant - tDebutAppui[pin]) >= 10 && appuiEnCours[pin])
+    {
+        appuiEnCours[pin] = 0; // on indique que l'appui a été traité
+        return true;           // on considère que le bouton a été appuyé
+    }
+
+    if (etatActuel == 0)
+    {
+        appuiEnCours[pin] = 0;
+    }
     // Mise à jour de l'état précédent
-    etatPrecedent = etatActuel;
+    etatPrecedent[pin] = etatActuel;
+    return false; // pas d'appui détecté
 }
 
 void majAffichage()
 {
     if (mode == 0)
     {
-        tft.setTextSize(2);
-        tft.setCursor(10, 10);
-        tft.println("Personnes");
-        tft.setCursor(10, 26);
-        tft.print("pr");
-        tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
-        tft.print("sentes:");
-        tft.fillRect(130, 26, 22, 15, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
-        tft.println(personnePresente);
+        if (personnePresente != ancienPersonnePresente || flagChangementMode)
+        {
+            tft.setTextSize(2);
+            tft.setCursor(10, 10);
+            tft.println("Personnes");
+            tft.setCursor(10, 26);
+            tft.print("pr");
+            tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+            tft.print("sentes:");
+            tft.fillRect(130, 26, 22, 15, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
+            tft.println(personnePresente);
+
+            ancienPersonnePresente = personnePresente;
+            flagChangementMode = 0;
+        }
     }
     else if (mode == 1)
     {
         tft.setTextSize(1);
 
-        tft.setCursor(10, 10);
-        tft.print("Personnes pr");
-        tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
-        tft.print("sentes : ");
-        tft.fillRect(142, 10, 12, 8, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
-        tft.println(personnePresente);
+        if (personnePresente != ancienPersonnePresente || flagChangementMode)
+        {
+            tft.setCursor(10, 10);
+            tft.print("Personnes pr");
+            tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+            tft.print("sentes : ");
+            tft.fillRect(142, 10, 12, 8, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
+            tft.println(personnePresente);
 
-        tft.setCursor(10, 60);
-        tft.print("Total entr");
-        tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
-        tft.print("es : ");
-        tft.fillRect(106, 60, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total d'entrées
-        tft.println(totalEntree);
+            ancienPersonnePresente = personnePresente;
+        }
 
-        tft.setCursor(10, 110);
-        tft.print("Total sorties : ");
-        tft.fillRect(106, 110, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total de sorties
-        tft.println(totalSortie);
+        if (totalEntree != ancienTotalEntree || flagChangementMode)
+        {
+            tft.setCursor(10, 60);
+            tft.print("Total entr");
+            tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+            tft.print("es : ");
+            tft.fillRect(106, 60, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total d'entrées
+            tft.println(totalEntree);
+
+            ancienTotalEntree = totalEntree;
+        }
+
+        if (totalSortie != ancienTotalSortie || flagChangementMode)
+        {
+            tft.setCursor(10, 110);
+            tft.print("Total sorties : ");
+            tft.fillRect(106, 110, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total de sorties
+            tft.println(totalSortie);
+
+            ancienTotalSortie = totalSortie;
+        }
+
+        flagChangementMode = 0;
     }
     else if (mode == 2)
     {
         tft.setTextSize(1);
         for (int i = 0; i < 10; i++)
         {
-            tft.setCursor(10, 10 + i * 11);
-            tft.print("Entr");
-            tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
-            tft.print("es ");
-            tft.print("porte ");
-            tft.print(i);
-            tft.print(" : ");
-            tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre d'entrées pour cette porte
-            tft.println(PortesEntree.porte[i]);
+            if (PortesEntree.porte[i] != ancienPortesEntree.porte[i] || flagChangementMode)
+            {
+                tft.setCursor(10, 10 + i * 11);
+                tft.print("Entr");
+                tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
+                tft.print("es ");
+                tft.print("porte ");
+                tft.print(i);
+                tft.print(" : ");
+                tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre d'entrées pour cette porte
+                tft.println(PortesEntree.porte[i]);
+
+                ancienPortesEntree.porte[i] = PortesEntree.porte[i];
+            }
         }
+        flagChangementMode = 0;
     }
     else if (mode == 3)
     {
         tft.setTextSize(1);
         for (int i = 0; i < 10; i++)
         {
-            tft.setCursor(10, 10 + i * 11);
-            tft.print("Sorties porte ");
-            tft.print(i);
-            tft.print(" : ");
-            tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre de sorties pour cette porte
-            tft.println(PortesSortie.porte[i]);
+            if (PortesSortie.porte[i] != ancienPortesSortie.porte[i] || flagChangementMode)
+            {
+                tft.setCursor(10, 10 + i * 11);
+                tft.print("Sorties porte ");
+                tft.print(i);
+                tft.print(" : ");
+                tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre de sorties pour cette porte
+                tft.println(PortesSortie.porte[i]);
+
+                ancienPortesSortie.porte[i] = PortesSortie.porte[i];
+            }
         }
+        flagChangementMode = 0;
     }
 }
 
