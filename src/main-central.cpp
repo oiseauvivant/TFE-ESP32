@@ -142,14 +142,31 @@ void loop()
         flagChangementMode = 1;       // on indique qu'il y a eu un changement de mode
         tft.fillScreen(ST77XX_BLACK); // Efface l'écran à chaque changement de mode
     }
+
+    if (appuiBouton(btnAjout))
+    {
+        personnePresente++;
+        totalEntree++;
+    }
+
+    if (appuiBouton(btnRetirer))
+    {
+        if (personnePresente > 0)
+        {
+            personnePresente--;
+            Serial.println("Personne retirée manuellement");
+        }
+        Serial.println("000000");
+        totalSortie++;
+    }
     majAffichage();
 }
 
 bool appuiBouton(int pin)
 {
-    static unsigned long tDebutAppui[35] = {0};
-    static bool etatPrecedent[35] = {0};
-    static bool appuiEnCours[35] = {0};
+    static unsigned long tDebutAppui[36] = {0};
+    static bool etatPrecedent[36] = {0};
+    static bool appuiEnCours[36] = {0};
 
     bool etatActuel = digitalRead(pin);
     unsigned long tMaintenant = millis();
@@ -165,14 +182,14 @@ bool appuiBouton(int pin)
     if (etatActuel == 1 && (tMaintenant - tDebutAppui[pin]) >= 10 && appuiEnCours[pin])
     {
         appuiEnCours[pin] = 0; // on indique que l'appui a été traité
-        return true;           // on considère que le bouton a été appuyé
+        etatPrecedent[pin] = etatActuel;
+        return true; // on considère que le bouton a été appuyé
     }
 
     if (etatActuel == 0)
     {
         appuiEnCours[pin] = 0;
     }
-    // Mise à jour de l'état précédent
     etatPrecedent[pin] = etatActuel;
     return false; // pas d'appui détecté
 }
@@ -278,19 +295,4 @@ void majAffichage()
         }
         flagChangementMode = 0;
     }
-}
-
-void ajoutPersonne()
-{
-    personnePresente++;
-    totalEntree++;
-}
-
-void retirerPersonne()
-{
-    if (personnePresente > 0) // On s'assure de ne pas avoir un nombre négatif de personnes présentes
-    {
-        personnePresente--;
-    }
-    totalSortie++;
 }
