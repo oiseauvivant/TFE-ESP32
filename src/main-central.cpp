@@ -40,7 +40,7 @@ totalPortes ancienPortesSortie;
 
 // Variables globales
 bool PCconnexion = 0;
-bool flagChangementMode = 0;
+bool flagChangementMode = 1;
 int mode = 0;
 int personnePresente = 0;
 int totalEntree = 0;
@@ -48,6 +48,9 @@ int totalSortie = 0;
 int ancienPersonnePresente = -1;
 int ancienTotalEntree = -1;
 int ancienTotalSortie = -1;
+int porteActive = -1;                      // numéro de porte en cours d’activation
+unsigned long tActivation = 0;             // moment où l’activation a commencé
+const unsigned long dureeActivation = 200; // durée en ms
 
 bool appuiBouton(int pin);
 void majAffichage();
@@ -74,6 +77,9 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
         totalSortie++;
         PortesSortie.porte[dataRecu.id]++;
     }
+
+    porteActive = dataRecu.id; // on mémorise la porte qui a été activée
+    tActivation = millis();    // on mémorise le moment de l'activation
 }
 
 void setup()
@@ -154,10 +160,29 @@ void loop()
         if (personnePresente > 0)
         {
             personnePresente--;
-            Serial.println("Personne retirée manuellement");
         }
-        Serial.println("000000");
         totalSortie++;
+    }
+
+    if (porteActive != -1)
+    {
+        if (millis() - tActivation < dureeActivation)
+        {
+            if (dataRecu.sens == 1)
+            {
+                demuxin.select(porteActive); // active la porte d'entrée correspondante
+            }
+            else if (dataRecu.sens == 0)
+            {
+                demuxout.select(porteActive); // active la porte de sortie correspondante
+            }
+        }
+        else
+        {
+            demuxin.disable();  // désactive toutes les portes d'entrée
+            demuxout.disable(); // désactive toutes les portes de sortie
+            porteActive = -1;   // réinitialise la porte active
+        }
     }
     majAffichage();
 }
@@ -196,6 +221,11 @@ bool appuiBouton(int pin)
 
 void majAffichage()
 {
+    const int posX[5] = {10, 38, 66, 94, 122};
+    const int posY[2] = {50, 90};
+    const int width = 25;
+    const int height = 28;
+
     if (mode == 0)
     {
         if (personnePresente != ancienPersonnePresente || flagChangementMode)
@@ -211,8 +241,28 @@ void majAffichage()
             tft.println(personnePresente);
 
             ancienPersonnePresente = personnePresente;
-            flagChangementMode = 0;
         }
+
+        if (flagChangementMode)
+        {
+            // Dessin des 10 carrés
+            for (int i = 0; i < 5; i++)
+            {
+                tft.fillRect(posX[i], posY[0], width, height, (i % 2 == 0) ? ST77XX_MAGENTA : ST77XX_CYAN);
+                tft.fillRect(posX[i], posY[1], width, height, (i % 2 == 0) ? ST77XX_CYAN : ST77XX_MAGENTA);
+
+                tft.setCursor(posX[i] + 8, posY[0] + 8);
+                tft.setTextColor(ST77XX_BLACK);
+                tft.print(i);
+
+                tft.setCursor(posX[i] + 8, posY[1] + 8);
+                tft.setTextColor(ST77XX_BLACK);
+                tft.print(i + 5);
+            }
+            tft.setTextColor(ST77XX_BLUE);
+        }
+
+        flagChangementMode = 0; // on indique que l'affichage a été mis à jour après un changement de mode
     }
     else if (mode == 1)
     {

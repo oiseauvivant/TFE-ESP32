@@ -18,6 +18,7 @@ class Demux
 public:
   Demux(int a, int b, int c, int d, int enable);
   void select(int canal);
+  void disable();
 
 private:
   int BitA, BitB, BitC, BitD, Enable;
