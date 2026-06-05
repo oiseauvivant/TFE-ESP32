@@ -57,12 +57,13 @@ void TFE_Bibliotheque::segment(int chiffre)
 void Demux::select(int canal)
 {
   if (canal < 0 || canal > 15)
-    return;                  // Canal invalide
-  digitalWrite(Enable, LOW); // Activer le démultiplexeur
+    return;                   // Canal invalide
+  digitalWrite(Enable, HIGH); // Activer le démultiplexeur
   digitalWrite(BitA, canal & 0x01);
   digitalWrite(BitB, (canal >> 1) & 0x01);
   digitalWrite(BitC, (canal >> 2) & 0x01);
   digitalWrite(BitD, (canal >> 3) & 0x01);
+  digitalWrite(Enable, LOW);
 }
 
 void Demux::disable()

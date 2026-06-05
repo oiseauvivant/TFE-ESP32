@@ -41,6 +41,7 @@ totalPortes ancienPortesSortie;
 // Variables globales
 bool PCconnexion = 0;
 bool flagChangementMode = 1;
+bool porteEnClignotement[10] = {0};
 int mode = 0;
 int personnePresente = 0;
 int totalEntree = 0;
@@ -48,9 +49,9 @@ int totalSortie = 0;
 int ancienPersonnePresente = -1;
 int ancienTotalEntree = -1;
 int ancienTotalSortie = -1;
-int porteActive = -1;                      // numéro de porte en cours d’activation
-unsigned long tActivation = 0;             // moment où l’activation a commencé
-const unsigned long dureeActivation = 200; // durée en ms
+int porteActive[10] = {0};                 // numéro de porte en cours d’activation
+unsigned long tActivation[10] = {0};       // moment où l’activation a commencé
+const unsigned long dureeActivation = 500; // durée en ms
 
 bool appuiBouton(int pin);
 void majAffichage();
@@ -78,8 +79,8 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
         PortesSortie.porte[dataRecu.id]++;
     }
 
-    porteActive = dataRecu.id; // on mémorise la porte qui a été activée
-    tActivation = millis();    // on mémorise le moment de l'activation
+    porteActive[dataRecu.id] = 1;        // on mémorise la porte qui a été activée
+    tActivation[dataRecu.id] = millis(); // on mémorise le moment de l'activation
 }
 
 void setup()
@@ -88,6 +89,8 @@ void setup()
     pinMode(btnRetirer, INPUT);
     pinMode(btnMode, INPUT);
 
+    demuxin.disable();  // désactive toutes les portes d'entrée au démarrage
+    demuxout.disable(); // désactive toutes les portes de sortie au démarrage
     for (int i = 0; i < 10; i++)
     {
         ancienPortesEntree.porte[i] = -1;
@@ -164,25 +167,31 @@ void loop()
         totalSortie++;
     }
 
-    if (porteActive != -1)
+    bool porteActiveDemux = false;
+
+    for (int i = 0; i < 10; i++)
     {
-        if (millis() - tActivation < dureeActivation)
+        if (porteActive[i])
         {
-            if (dataRecu.sens == 1)
+            if (millis() - tActivation[i] < dureeActivation)
             {
-                demuxin.select(porteActive); // active la porte d'entrée correspondante
-            }
-            else if (dataRecu.sens == 0)
-            {
-                demuxout.select(porteActive); // active la porte de sortie correspondante
+                porteActiveDemux = true;
+                if (dataRecu.sens == 1)
+                {
+                    demuxin.select(i); // active la porte d'entrée correspondante
+                }
+                delay(1);
+                if (dataRecu.sens == 0)
+                {
+                    demuxout.select(i); // active la porte de sortie correspondante
+                }
             }
         }
-        else
-        {
-            demuxin.disable();  // désactive toutes les portes d'entrée
-            demuxout.disable(); // désactive toutes les portes de sortie
-            porteActive = -1;   // réinitialise la porte active
-        }
+    }
+    if (!porteActiveDemux)
+    {
+        demuxin.disable();  // désactive toutes les portes d'entrée si aucune n'est active
+        demuxout.disable(); // désactive toutes les portes de sortie si aucune n'est active
     }
     majAffichage();
 }
@@ -260,6 +269,42 @@ void majAffichage()
                 tft.print(i + 5);
             }
             tft.setTextColor(ST77XX_BLUE);
+        }
+
+        for (int i = 0; i < 10; i++)
+        {
+            if (porteActive[i])
+            {
+                int ligne = (i < 5) ? 0 : 1;
+                int colonne = i % 5;
+
+                bool doitClignoter = (millis() - tActivation[i]) < dureeActivation;
+
+                if (doitClignoter && !porteEnClignotement[i])
+                {
+                    tft.fillRect(posX[colonne], posY[ligne], width, height, ST77XX_YELLOW);
+
+                    tft.setTextColor(ST77XX_BLACK);
+                    tft.setCursor(posX[colonne] + 8, posY[ligne] + 8);
+                    tft.print(i);
+                    porteEnClignotement[i] = true; // on indique que la porte est en clignotement
+                }
+                else if (!doitClignoter && porteEnClignotement[i])
+                {
+                    uint16_t couleurDefaut = (colonne % 2 == 0) ? ((ligne == 0) ? ST77XX_MAGENTA : ST77XX_CYAN) : ((ligne == 0) ? ST77XX_CYAN : ST77XX_MAGENTA);
+
+                    tft.fillRect(posX[colonne], posY[ligne], width, height, couleurDefaut);
+
+                    tft.setTextColor(ST77XX_BLACK);
+                    tft.setCursor(posX[colonne] + 8, posY[ligne] + 8);
+                    tft.print(i);
+
+                    porteActive[i] = 0;             // réinitialise la porte active après l'affichage
+                    porteEnClignotement[i] = false; // réinitialise l'état de clignotement
+                }
+
+                tft.setTextColor(ST77XX_BLUE);
+            }
         }
 
         flagChangementMode = 0; // on indique que l'affichage a été mis à jour après un changement de mode
