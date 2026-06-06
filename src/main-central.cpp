@@ -79,6 +79,13 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len)
         PortesSortie.porte[dataRecu.id]++;
     }
 
+    if (PCconnexion)
+    {
+        char trame[30];
+        sprintf(trame, "id=%d;sens=%d", dataRecu.id, dataRecu.sens);
+        Serial.println(trame);
+    }
+
     porteActive[dataRecu.id] = 1;        // on mémorise la porte qui a été activée
     tActivation[dataRecu.id] = millis(); // on mémorise le moment de l'activation
 }
@@ -133,8 +140,10 @@ void loop()
         else if (mspPC == "DECONNEXION")
         {
             PCconnexion = 0;
-            tft.setCursor(10, 40);
-            tft.print("PC déconnecté");
+        }
+        else if (mspPC == "SYNCHRO")
+        {
+            Serial.println("SYNCHRO;" + String(totalEntree) + ";" + String(totalSortie) + ";" + String(personnePresente));
         }
     }
 
