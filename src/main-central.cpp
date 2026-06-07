@@ -141,7 +141,7 @@ void loop()
         {
             PCconnexion = 0;
         }
-        else if (mspPC == "SYNCHRO")
+        else if (mspPC == "SYNCHRO" && PCconnexion)
         {
             Serial.println("SYNCHRO;" + String(totalEntree) + ";" + String(totalSortie) + ";" + String(personnePresente));
         }
@@ -165,6 +165,13 @@ void loop()
     {
         personnePresente++;
         totalEntree++;
+
+        if (PCconnexion)
+        {
+            char trame[30];
+            sprintf(trame, "id=-1;sens=1");
+            Serial.println(trame);
+        }
     }
 
     if (appuiBouton(btnRetirer))
@@ -174,6 +181,13 @@ void loop()
             personnePresente--;
         }
         totalSortie++;
+
+        if (PCconnexion)
+        {
+            char trame[30];
+            sprintf(trame, "id=-1;sens=0");
+            Serial.println(trame);
+        }
     }
 
     bool porteActiveDemux = false;
