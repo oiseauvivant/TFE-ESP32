@@ -42,6 +42,7 @@ totalPortes ancienPortesSortie;
 bool PCconnexion = 0;
 bool flagChangementMode = 1;
 bool porteEnClignotement[10] = {0};
+int nbrPortes = 10;
 int mode = 0;
 int personnePresente = 0;
 int totalEntree = 0;
@@ -144,6 +145,27 @@ void loop()
         else if (mspPC == "SYNCHRO" && PCconnexion)
         {
             Serial.println("SYNCHRO;" + String(totalEntree) + ";" + String(totalSortie) + ";" + String(personnePresente));
+
+            Serial.print("PORTES:");
+            // Entrées
+            for (int i = 0; i < nbrPortes; i++)
+            {
+                Serial.print(PortesEntree.porte[i]);
+                if (i < nbrPortes - 1)
+                {
+                    Serial.print(',');
+                }
+            }
+            Serial.print(';');
+            for (int i = 0; i < nbrPortes; i++)
+            {
+                Serial.print(PortesSortie.porte[i]);
+                if (i < nbrPortes - 1)
+                {
+                    Serial.print(',');
+                }
+            }
+            Serial.println();
         }
     }
 
