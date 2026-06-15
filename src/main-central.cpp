@@ -14,6 +14,10 @@
 #define btnAjout 34
 #define btnRetirer 35
 
+#define couleurFond ST77XX_WHITE
+#define couleurTexte ST77XX_BLACK
+#define couleurPorte ST77XX_BLUE
+
 Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
 
 Demux demuxout(26, 27, 14, 12, 13); // Pins pour le démultiplexeur de sortie
@@ -121,11 +125,27 @@ void setup()
 
     tft.cp437(true);
     tft.initR(INITR_BLACKTAB);
-    tft.fillScreen(ST77XX_BLACK);
-    tft.setCursor(10, 10);         // Position du texte
-    tft.setTextColor(ST77XX_BLUE); // Couleur du texte
-    tft.setTextSize(1);            // Taille (1 = normal, 2 = x2, etc.)
+    tft.fillScreen(couleurFond);
+    tft.setCursor(10, 10);          // Position du texte
+    tft.setTextColor(couleurTexte); // Couleur du texte
+    tft.setTextSize(1);             // Taille (1 = normal, 2 = x2, etc.)
     tft.setRotation(3);
+
+    // --- TEST DEMUX IN ---
+    for (int i = 0; i < 10; i++)
+    {
+        demuxin.select(i); // active la sortie i
+        delay(300);        // laisse le temps de voir la LED
+    }
+    demuxin.disable();
+
+    // --- TEST DEMUX OUT ---
+    for (int i = 0; i < 10; i++)
+    {
+        demuxout.select(i); // active la sortie i
+        delay(300);
+    }
+    demuxout.disable();
 }
 
 void loop()
@@ -179,8 +199,8 @@ void loop()
         {
             mode++;
         }
-        flagChangementMode = 1;       // on indique qu'il y a eu un changement de mode
-        tft.fillScreen(ST77XX_BLACK); // Efface l'écran à chaque changement de mode
+        flagChangementMode = 1;      // on indique qu'il y a eu un changement de mode
+        tft.fillScreen(couleurFond); // Efface l'écran à chaque changement de mode
     }
 
     if (appuiBouton(btnAjout))
@@ -291,7 +311,7 @@ void majAffichage()
             tft.print("pr");
             tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
             tft.print("sentes:");
-            tft.fillRect(130, 26, 22, 15, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
+            tft.fillRect(130, 26, 22, 15, couleurFond); // Efface la partie du nombre de personnes présentes
             tft.println(personnePresente);
 
             ancienPersonnePresente = personnePresente;
@@ -302,18 +322,18 @@ void majAffichage()
             // Dessin des 10 carrés
             for (int i = 0; i < 5; i++)
             {
-                tft.fillRect(posX[i], posY[0], width, height, (i % 2 == 0) ? ST77XX_MAGENTA : ST77XX_CYAN);
-                tft.fillRect(posX[i], posY[1], width, height, (i % 2 == 0) ? ST77XX_CYAN : ST77XX_MAGENTA);
+                tft.fillRect(posX[i], posY[0], width, height, couleurPorte);
+                tft.fillRect(posX[i], posY[1], width, height, couleurPorte);
 
                 tft.setCursor(posX[i] + 8, posY[0] + 8);
-                tft.setTextColor(ST77XX_BLACK);
+                tft.setTextColor(couleurFond);
                 tft.print(i);
 
                 tft.setCursor(posX[i] + 8, posY[1] + 8);
-                tft.setTextColor(ST77XX_BLACK);
+                tft.setTextColor(couleurFond);
                 tft.print(i + 5);
             }
-            tft.setTextColor(ST77XX_BLUE);
+            tft.setTextColor(couleurTexte);
         }
 
         for (int i = 0; i < 10; i++)
@@ -327,20 +347,25 @@ void majAffichage()
 
                 if (doitClignoter && !porteEnClignotement[i])
                 {
-                    tft.fillRect(posX[colonne], posY[ligne], width, height, ST77XX_YELLOW);
+                    if (dataRecu.sens == 1)
+                    {
+                        tft.fillRect(posX[colonne], posY[ligne], width, height, ST77XX_GREEN);
+                    }
+                    else if (dataRecu.sens == 0)
+                    {
+                        tft.fillRect(posX[colonne], posY[ligne], width, height, ST77XX_RED);
+                    }
 
-                    tft.setTextColor(ST77XX_BLACK);
+                    tft.setTextColor(couleurFond);
                     tft.setCursor(posX[colonne] + 8, posY[ligne] + 8);
                     tft.print(i);
                     porteEnClignotement[i] = true; // on indique que la porte est en clignotement
                 }
                 else if (!doitClignoter && porteEnClignotement[i])
                 {
-                    uint16_t couleurDefaut = (colonne % 2 == 0) ? ((ligne == 0) ? ST77XX_MAGENTA : ST77XX_CYAN) : ((ligne == 0) ? ST77XX_CYAN : ST77XX_MAGENTA);
+                    tft.fillRect(posX[colonne], posY[ligne], width, height, couleurPorte);
 
-                    tft.fillRect(posX[colonne], posY[ligne], width, height, couleurDefaut);
-
-                    tft.setTextColor(ST77XX_BLACK);
+                    tft.setTextColor(couleurFond);
                     tft.setCursor(posX[colonne] + 8, posY[ligne] + 8);
                     tft.print(i);
 
@@ -348,7 +373,7 @@ void majAffichage()
                     porteEnClignotement[i] = false; // réinitialise l'état de clignotement
                 }
 
-                tft.setTextColor(ST77XX_BLUE);
+                tft.setTextColor(couleurTexte);
             }
         }
 
@@ -364,7 +389,7 @@ void majAffichage()
             tft.print("Personnes pr");
             tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
             tft.print("sentes : ");
-            tft.fillRect(142, 10, 12, 8, ST77XX_BLACK); // Efface la partie du nombre de personnes présentes
+            tft.fillRect(142, 10, 12, 8, couleurFond); // Efface la partie du nombre de personnes présentes
             tft.println(personnePresente);
 
             ancienPersonnePresente = personnePresente;
@@ -376,7 +401,7 @@ void majAffichage()
             tft.print("Total entr");
             tft.write(0x82); // Affiche le caractère 'é' à partir de la table de caractères CP437
             tft.print("es : ");
-            tft.fillRect(106, 60, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total d'entrées
+            tft.fillRect(106, 60, 24, 8, couleurFond); // Efface la partie du nombre total d'entrées
             tft.println(totalEntree);
 
             ancienTotalEntree = totalEntree;
@@ -386,7 +411,7 @@ void majAffichage()
         {
             tft.setCursor(10, 110);
             tft.print("Total sorties : ");
-            tft.fillRect(106, 110, 24, 8, ST77XX_BLACK); // Efface la partie du nombre total de sorties
+            tft.fillRect(106, 110, 24, 8, couleurFond); // Efface la partie du nombre total de sorties
             tft.println(totalSortie);
 
             ancienTotalSortie = totalSortie;
@@ -408,7 +433,7 @@ void majAffichage()
                 tft.print("porte ");
                 tft.print(i);
                 tft.print(" : ");
-                tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre d'entrées pour cette porte
+                tft.fillRect(118, 10 + i * 11, 24, 8, couleurFond); // Efface la partie du nombre d'entrées pour cette porte
                 tft.println(PortesEntree.porte[i]);
 
                 ancienPortesEntree.porte[i] = PortesEntree.porte[i];
@@ -427,7 +452,7 @@ void majAffichage()
                 tft.print("Sorties porte ");
                 tft.print(i);
                 tft.print(" : ");
-                tft.fillRect(118, 10 + i * 11, 24, 8, ST77XX_BLACK); // Efface la partie du nombre de sorties pour cette porte
+                tft.fillRect(118, 10 + i * 11, 24, 8, couleurFond); // Efface la partie du nombre de sorties pour cette porte
                 tft.println(PortesSortie.porte[i]);
 
                 ancienPortesSortie.porte[i] = PortesSortie.porte[i];
