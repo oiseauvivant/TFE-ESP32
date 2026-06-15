@@ -232,7 +232,7 @@ void detectionSignal38()
   }
   else
   {
-    if (nowMillis - lastReceptionMillis38 > 150)
+    if (nowMillis - lastReceptionMillis38 > 50)
     {
       signalPresent38 = false;
     }
@@ -251,7 +251,7 @@ void detectionSignal56()
   }
   else
   {
-    if (nowMillis - lastReceptionMillis56 > 150)
+    if (nowMillis - lastReceptionMillis56 > 50)
     {
       signalPresent56 = false;
     }
