@@ -135,7 +135,7 @@ void setup()
     for (int i = 0; i < 10; i++)
     {
         demuxin.select(i); // active la sortie i
-        delay(300);        // laisse le temps de voir la LED
+        delay(30);         // laisse le temps de voir la LED
     }
     demuxin.disable();
 
@@ -143,7 +143,7 @@ void setup()
     for (int i = 0; i < 10; i++)
     {
         demuxout.select(i); // active la sortie i
-        delay(300);
+        delay(30);
     }
     demuxout.disable();
 }
